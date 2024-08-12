@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dragonflydb.name" . }}
+  labels:
+    app: {{ include "dragonflydb.name" . }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "dragonflydb.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "dragonflydb.name" . }}
+    spec:
+      containers:
+        - name: dragonflydb
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+          ports:
+            - containerPort: 6381
+          resources:
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+            requests:
+              cpu: "500m"
+              memory: "256Mi"

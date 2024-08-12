@@ -1,0 +1,7 @@
+apiVersion: v2
+name: dragonflydb
+description: A Helm chart for DragonflyDB using a specific Docker image
+
+# A chart's version must follow the Semantic Versioning specification
+version: 0.1.0
+appVersion: "v1.21.0"
