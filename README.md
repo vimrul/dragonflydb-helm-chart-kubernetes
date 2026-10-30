@@ -1,108 +1,61 @@
+# DragonflyDB Helm Reference for Kubernetes
 
-# DragonflyDB Helm Chart for Kubernetes
+A minimal Helm chart for deploying a single DragonflyDB instance with a Kubernetes Deployment and NodePort Service.
 
-This repository contains a Helm chart to deploy [DragonflyDB](https://github.com/dragonflydb/dragonfly) on a Kubernetes cluster. DragonflyDB is a high-performance in-memory database compatible with the Redis protocol, designed for large-scale workloads.
+**Scope:** a small deployment reference. It does not configure replication, persistent storage, authentication, or a high-availability topology.
 
-## Features
+## Repository layout
 
-- **Kubernetes Deployment**: Helm chart for deploying DragonflyDB on Kubernetes.
-- **Scalable**: Easily scalable to meet performance requirements.
-- **Customizable**: Configuration options provided via `values.yaml` for customizing the deployment.
-- **Service Exposure**: Deploys a Kubernetes service to expose DragonflyDB.
+The chart lives in [dragonfly-helm/](dragonfly-helm/), not the repository root.
 
-## Prerequisites
+| File | Purpose |
+| --- | --- |
+| [Chart.yaml](dragonfly-helm/Chart.yaml) | Chart metadata |
+| [values.yaml](dragonfly-helm/values.yaml) | Image repository, tag, and pull policy |
+| [deployment.yaml](dragonfly-helm/templates/deployment.yaml) | Single replica and fixed resource settings |
+| [service.yaml](dragonfly-helm/templates/service.yaml) | Service port 6379, target port 6379, NodePort 30082 |
+| [_helpers.tpl](dragonfly-helm/templates/_helpers.tpl) | Resource naming, including optional nameOverride |
 
-- A Kubernetes cluster
-- Helm installed and configured
-- `kubectl` installed and configured
+## Inspect and install
 
-## Installation
-
-### 1. Clone the Repository
+Prerequisites: an authorized Kubernetes context, Helm, and kubectl. Start in a disposable development cluster.
 
 ```bash
-git clone https://github.com/yourusername/dragonflydb-helm-chart-kubernetes.git
+git clone https://github.com/vimrul/dragonflydb-helm-chart-kubernetes.git
 cd dragonflydb-helm-chart-kubernetes
+helm lint ./dragonfly-helm
+helm template dragonflydb ./dragonfly-helm --namespace dragonflydb-namespace
+helm install dragonflydb ./dragonfly-helm \
+  --namespace dragonflydb-namespace --create-namespace
+kubectl get deployments,pods,svc -n dragonflydb-namespace
 ```
 
-### 2. Install the Helm Chart
-
-To install the DragonflyDB chart, run:
+With the default name, forward the service:
 
 ```bash
-helm install dragonflydb ./ --namespace dragonflydb-namespace
+kubectl port-forward svc/dragonflydb 6379:6379 -n dragonflydb-namespace
 ```
 
-This command installs DragonflyDB into your Kubernetes cluster within the specified namespace (`dragonflydb-namespace`). You can replace the namespace name with your preferred one.
+Use a Redis-compatible client to check connectivity at localhost:6379.
 
-### 3. Verify the Installation
+## Configuration boundaries
 
-After installation, check the status of the DragonflyDB pods:
+Only image settings are defined in the supplied values file; the helper also accepts `nameOverride`. Replica count, resource settings, and service type are hard-coded in templates. Setting `replicaCount`, `resources`, or `service.type` in a values file does not change those templates.
 
-```bash
-kubectl get pods -n dragonflydb-namespace
-```
+The Deployment declares container port 6382 while the Service targets 6379. A container-port declaration does not configure the application's listening port: verify the process and align the manifests for your deployment.
 
-### 4. Access DragonflyDB
+Review the fixed NodePort and network reachability before installation. The chart pins image version v1.21.0; assess compatibility and maintenance status before choosing a version for real workloads.
 
-Once the deployment is complete, you can expose DragonflyDB by using the service created by the Helm chart:
+## Verification and recovery
 
-```bash
-kubectl get svc -n dragonflydb-namespace
-```
+After installation, inspect pod events/logs, service endpoints, and client connectivity. Use test data to observe what happens when the pod restarts: this chart does not promise durable storage or automatic data recovery.
 
-Forward the service port to access DragonflyDB:
-
-```bash
-kubectl port-forward svc/dragonflydb-service 6379:6379 -n dragonflydb-namespace
-```
-
-You can now connect to DragonflyDB using a Redis client at `localhost:6379`.
-
-## Customization
-
-The Helm chart comes with several configuration options that can be adjusted by modifying the `values.yaml` file. Some key configurable parameters are:
-
-- **replicaCount**: Number of DragonflyDB instances to deploy.
-- **resources**: Resource limits and requests for the DragonflyDB pods.
-- **service.type**: The type of Kubernetes service (e.g., `ClusterIP`, `NodePort`, `LoadBalancer`).
-  
-You can override the default values by providing your custom `values.yaml` during installation:
-
-```bash
-helm install dragonflydb ./ -f custom-values.yaml --namespace dragonflydb-namespace
-```
-
-## Files Overview
-
-- `Chart.yaml`: Contains metadata about the Helm chart.
-- `values.yaml`: Default configuration values for the chart.
-- `templates/deployment.yaml`: Kubernetes Deployment for DragonflyDB.
-- `templates/service.yaml`: Kubernetes Service to expose DragonflyDB.
-- `_helpers.tpl`: Helper template for consistent templating across the chart.
-
-## Uninstalling the Chart
-
-To uninstall/delete the `dragonflydb` release, run:
+If deployment fails, inspect the rendered manifests and pod events before retrying. Restore a known configuration or Helm revision when applicable. Uninstalling the release removes the chart's resources:
 
 ```bash
 helm uninstall dragonflydb --namespace dragonflydb-namespace
 ```
 
-This will remove all components associated with the DragonflyDB deployment.
+No cluster deployment, load test, or recovery benchmark is claimed by this README.
 
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Contributions
-
-Contributions are welcome! Feel free to open an issue or submit a pull request.
-
-## Author
-
-[Imrul](https://imrul.net)
-
-## Contact
-
-For any inquiries, please contact me at [hello@imrul.net](mailto:hello@imrul.net).
+Author: [Mohammad Imrul Hasan](https://imrul.net/).
